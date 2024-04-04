@@ -1,35 +1,49 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import './App.css';
+import tasks from './utils/data-tasks';
+import Card from './components/Card/Card';
 
 function App() {
-  const [count, setCount] = useState(0)
+    const todoTasks = tasks.filter((task) => task.status === 'todo');
+    const inProgressTasks = tasks.filter((task) => task.status === 'in-progress');
+    const doneTasks = tasks.filter((task) => task.status === 'done');
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    return (
+        <>
+            <div>
+                <h2>Todo tasks</h2>
+                {todoTasks.map((item) => (
+                    <Card
+                        id={item.id}
+                        title={item.title}
+                        key={item.id}
+                        points={item.points}
+                    />
+                ))}
+            </div>
+            <div>
+                <h2>In progress</h2>
+                {inProgressTasks.map((item) => (
+                    <Card
+                        id={item.id}
+                        title={item.title}
+                        key={item.id}
+                        points={item.points}
+                    />
+                ))}
+            </div>
+            <div>
+                <h2>Done</h2>
+                {doneTasks.map((item) => (
+                    <Card
+                        id={item.id}
+                        title={item.title}
+                        key={item.id}
+                        points={item.points}
+                    />
+                ))}
+            </div>
+        </>
+    );
 }
 
-export default App
+export default App;
