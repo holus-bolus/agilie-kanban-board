@@ -1,48 +1,37 @@
-import './App.css';
-import tasks from './utils/data-tasks';
 import Card from './components/Card/Card';
+import { Container, Row, Col } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { statuses, tasks } from './utils/data-tasks.ts';
 
 function App() {
-    const todoTasks = tasks.filter((task) => task.status === 'todo');
-    const inProgressTasks = tasks.filter((task) => task.status === 'in-progress');
-    const doneTasks = tasks.filter((task) => task.status === 'done');
+    const columns = statuses.map((status) => {
+        const tasksInColumn = tasks.filter((task) => task.status === status);
+        return {
+            status,
+            tasks: tasksInColumn,
+        };
+    });
 
     return (
-        <>
-            <div>
-                <h2>Todo tasks</h2>
-                {todoTasks.map((item) => (
-                    <Card
-                        id={item.id}
-                        title={item.title}
-                        key={item.id}
-                        points={item.points}
-                    />
+        <Container>
+            <Row>
+                {columns.map((column) => (
+                    <Col key={column.status}>
+                        <h2>{column.status} tasks</h2>
+                        <div className="bg-light p-3">
+                            {column.tasks.map((task) => (
+                                <Card
+                                    id={task.id}
+                                    title={task.title}
+                                    key={task.id}
+                                    points={task.points}
+                                />
+                            ))}
+                        </div>
+                    </Col>
                 ))}
-            </div>
-            <div>
-                <h2>In progress</h2>
-                {inProgressTasks.map((item) => (
-                    <Card
-                        id={item.id}
-                        title={item.title}
-                        key={item.id}
-                        points={item.points}
-                    />
-                ))}
-            </div>
-            <div>
-                <h2>Done</h2>
-                {doneTasks.map((item) => (
-                    <Card
-                        id={item.id}
-                        title={item.title}
-                        key={item.id}
-                        points={item.points}
-                    />
-                ))}
-            </div>
-        </>
+            </Row>
+        </Container>
     );
 }
 

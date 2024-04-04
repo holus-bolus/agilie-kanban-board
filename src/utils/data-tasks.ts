@@ -1,7 +1,9 @@
+import {Task} from "../interfaces/Task";
+import Status from "../interfaces/Status.ts";
 
-import { Task } from "../interfaces/Task";
+export const statuses: Status[] = ['todo', 'in-progress', 'done']
 
-const tasks: Array<Task> = [
+export const tasks: Array<Task> = [
     {
         title: 'First task',
         id: '1',
@@ -22,4 +24,3 @@ const tasks: Array<Task> = [
     },
 ];
 
-export default tasks;
