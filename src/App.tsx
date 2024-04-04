@@ -24,10 +24,12 @@ function App() {
     };
 
     const getTasksForRepo = (repoUrl: string) => {
+        if (!repoUrl) return []; 
         const repoTasksKey = `${repoUrl}_tasks`;
         const tasksJson = localStorage.getItem(repoTasksKey);
         return tasksJson ? JSON.parse(tasksJson) : [];
     };
+
 
 
 
