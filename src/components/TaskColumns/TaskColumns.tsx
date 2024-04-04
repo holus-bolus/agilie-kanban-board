@@ -1,16 +1,12 @@
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import Column from "../../interfaces/Columns.ts";
 import Card from "../Card/Card.tsx";
 import { Row, Col } from 'react-bootstrap';
+import TaskColumnsProps from "../../interfaces/TaskColumn.ts";
 
-interface TaskColumnsProps {
-    columns: Column[];
-    handlePointChange: (taskId: string | number, newPoints: number) => void;
-    handleDragEnd: (result: any) => void;
-}
 
-const TaskColumns: React.FC<TaskColumnsProps> = ({ columns, handlePointChange, handleDragEnd }) => {
+
+const TaskColumns: React.FC<TaskColumnsProps> = ({ columns, onPointChange, handleDragEnd }) => {
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
             <Row>
@@ -34,7 +30,7 @@ const TaskColumns: React.FC<TaskColumnsProps> = ({ columns, handlePointChange, h
                                                             title={task.title}
                                                             points={task.points}
                                                             priority={task.priority}
-                                                            onPointChange={handlePointChange}
+                                                            onPointChange={onPointChange}
                                                         />
                                                     </div>
                                                 )}

@@ -1,4 +1,3 @@
-// InputForm.tsx
 import React from 'react';
 import { Form, Col, Button } from 'react-bootstrap';
 

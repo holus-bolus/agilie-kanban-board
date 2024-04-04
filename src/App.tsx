@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import {Container, Row, Col, Button} from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import {statuses, getTasks} from './utils/data-tasks.ts';
+import {statuses} from './utils/data-tasks.ts';
 import Column from "./interfaces/Columns.ts";
 import {v4 as uuidv4} from 'uuid';
 import {Priority} from "./interfaces/Priority.ts";
@@ -9,14 +9,63 @@ import AddTaskModal from "./components/AddTaskModal/AddTaskModal.tsx";
 import InputForm from "./components/InputForm/Inputform.tsx";
 import TaskColumns from "./components/TaskColumns/TaskColumns.tsx";
 import OwnerLinks from "./components/OwnerLinks/OwnerLinks.tsx";
+import {DropResult} from "react-beautiful-dnd";
+
 
 function App() {
     const [columns, setColumns] = useState<Column[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [repoUrl, setRepoUrl] = useState('');
     const [loading, setLoading] = useState(false);
-    const owner = repoUrl.split('/')[3];
+    const owner = repoUrl.split('/')[0];
     const [error, setError] = useState<string | null>(null);
+
+    const handleDragEnd = (result: DropResult) => {
+        const { destination, source, draggableId } = result;
+        if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
+            return;
+        }
+
+        const startColumnIndex = columns.findIndex(column => column.status === source.droppableId);
+        const finishColumnIndex = columns.findIndex(column => column.status === destination.droppableId);
+        const updatedColumns = [...columns];
+
+        if (startColumnIndex === finishColumnIndex) {
+            const column = updatedColumns[startColumnIndex];
+            const newTasks = Array.from(column.tasks);
+            newTasks.splice(source.index, 1);
+            const taskToMove = column.tasks.find(task => task.id === draggableId);
+            if (taskToMove) {
+                newTasks.splice(destination.index, 0, taskToMove);
+                updatedColumns[startColumnIndex] = { ...column, tasks: newTasks };
+            }
+        } else {
+            const startColumn = updatedColumns[startColumnIndex];
+            const finishColumn = updatedColumns[finishColumnIndex];
+            const startTasks = Array.from(startColumn.tasks);
+            const finishTasks = Array.from(finishColumn.tasks);
+            const [removed] = startTasks.splice(source.index, 1);
+            finishTasks.splice(destination.index, 0, removed);
+            updatedColumns[startColumnIndex] = { ...startColumn, tasks: startTasks };
+            updatedColumns[finishColumnIndex] = { ...finishColumn, tasks: finishTasks };
+        }
+
+        setColumns(updatedColumns);
+    };
+
+
+    const handlePointChange = (taskId: string | number, newPoints: number) => {
+        const updatedColumns = columns.map(column => {
+            const updatedTasks = column.tasks.map(task => {
+                if (task.id === taskId) {
+                    return { ...task, points: newPoints };
+                }
+                return task;
+            });
+            return { ...column, tasks: updatedTasks };
+        });
+        setColumns(updatedColumns);
+    };
 
     const updateTasksForRepo = (tasks: any[], repoUrl: string) => {
         const repoTasksKey = `${repoUrl}_tasks`;
@@ -24,50 +73,48 @@ function App() {
     };
 
     const getTasksForRepo = (repoUrl: string) => {
-        if (!repoUrl) return []; 
+        if (!repoUrl) return [];
         const repoTasksKey = `${repoUrl}_tasks`;
         const tasksJson = localStorage.getItem(repoTasksKey);
         return tasksJson ? JSON.parse(tasksJson) : [];
     };
 
-
-
-
-
-    const handleLoadColumns = async () => {
-        if (!repoUrl) {
+    const handleLoadColumns = async (url: string) => {
+        if (!url) {
             setError('Repository URL is empty');
             return;
         }
 
         setLoading(true);
         setError(null);
+
         try {
-            const response = await fetch(`https://api.github.com/repos/${repoUrl}/issues`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch issues');
+            const locallyStoredTasks = getTasksForRepo(url);
+
+            if (locallyStoredTasks.length > 0) {
+                const updatedColumns = statuses.map((status) => {
+                    const tasksInColumn = locallyStoredTasks.filter((task: { status: string; }) => task.status === status);
+                    const totalPoints = tasksInColumn.reduce((acc: any, task: { points: any; }) => acc + task.points, 0);
+                    return {
+                        status,
+                        tasks: tasksInColumn,
+                        totalPoints,
+                    };
+                });
+
+                setColumns(updatedColumns);
+            } else {
+                console.log('No locally stored tasks found for repository:', url);
+                setColumns([]);
             }
-            const fetchedTasks = await response.json();
-            updateTasksForRepo(fetchedTasks, repoUrl);
-            const updatedColumns = statuses.map((status) => {
-                const tasksInColumn = getTasksForRepo(repoUrl).filter((task: { status: string; }) => task.status === status);
-                const totalPoints = tasksInColumn.reduce((acc: any, task: { points: any; }) => acc + task.points, 0);
-                return {
-                    status,
-                    tasks: tasksInColumn,
-                    totalPoints,
-                };
-            });
-            setColumns(updatedColumns);
         } catch (error: any) {
             console.error('Failed to load issues:', error);
             setError(error.message);
             setColumns([]);
         }
+
         setLoading(false);
     };
-
-
 
     const handleAddTask = (newTask: { title: string; points: number; priority: Priority; status: string; }) => {
         if (!repoUrl) {
@@ -79,7 +126,6 @@ function App() {
             ...newTask,
             id: uuidv4()
         };
-        const repoTasksKey = `${repoUrl}_tasks`;
         const updatedTasks = [...getTasksForRepo(repoUrl), taskWithId];
         updateTasksForRepo(updatedTasks, repoUrl);
         const updatedColumns = statuses.map((status) => {
@@ -93,105 +139,29 @@ function App() {
         });
         setColumns(updatedColumns);
         setShowModal(false);
-
-        localStorage.setItem(repoTasksKey, JSON.stringify(updatedTasks));
     };
 
     const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setRepoUrl(e.target.value);
-        setColumns([]);
+        if (!e.target.value) {
+            setColumns([]);
+            // Clear tasks from localStorage when input is cleared
+            localStorage.removeItem(`${repoUrl}_tasks`);
+        }
     };
 
     useEffect(() => {
-        const storedColumns = localStorage.getItem('columnPositions');
-        if (storedColumns) {
-            setColumns(JSON.parse(storedColumns));
-        } else {
-            const defaultColumns = statuses.map((status) => ({
-                status,
-                tasks: [],
-                totalPoints: 0
-            }));
-            setColumns(defaultColumns);
+        const lastRepoUrl = localStorage.getItem('lastRepoUrl');
+        if (lastRepoUrl) {
+            handleLoadColumns(lastRepoUrl);
         }
     }, []);
 
     useEffect(() => {
-        const updatedTasks = getTasks();
-        const initialColumns = statuses.map((status) => {
-            const tasksInColumn = updatedTasks.filter((task) => task.status === status);
-            const totalPoints = tasksInColumn.reduce((acc, task) => acc + task.points, 0);
-            return {
-                status,
-                tasks: tasksInColumn,
-                totalPoints,
-            };
-        });
-        setColumns(initialColumns);
-    }, []);
-
-    useEffect(() => {
-        const storedColumns = localStorage.getItem('columnPositions');
-        if (storedColumns) {
-            setColumns(JSON.parse(storedColumns));
-        } else {
-            const defaultColumns = statuses.map((status) => ({
-                status,
-                tasks: [],
-                totalPoints: 0
-            }));
-            setColumns(defaultColumns);
+        if (repoUrl) {
+            localStorage.setItem('lastRepoUrl', repoUrl);
         }
-    }, []);
-
-
-    const handlePointChange = (taskId: string | number, newPoints: number) => {
-        setColumns(prevColumns => {
-            const updatedColumns = prevColumns.map((column) => {
-                const updatedTasks = column.tasks.map((task) => {
-                    if (task.id === taskId) {
-                        return {...task, points: newPoints};
-                    }
-                    return task;
-                });
-                const totalPoints = updatedTasks.reduce((acc, task) => acc + task.points, 0);
-                return {
-                    ...column,
-                    tasks: updatedTasks,
-                    totalPoints,
-                };
-            });
-            return updatedColumns;
-        });
-    };
-
-    const handleShowModal = () => setShowModal(true);
-    const handleCloseModal = () => setShowModal(false);
-
-
-    const handleDragEnd = (result: any) => {
-        if (!result.destination) return;
-        const {source, destination} = result;
-        const updatedColumns = [...columns];
-
-        if (source.droppableId === destination.droppableId) {
-
-            const sourceColumnIndex = updatedColumns.findIndex(col => col.status === source.droppableId);
-            const updatedTasks = Array.from(updatedColumns[sourceColumnIndex].tasks);
-            const [removed] = updatedTasks.splice(source.index, 1);
-            updatedTasks.splice(destination.index, 0, removed);
-            updatedColumns[sourceColumnIndex].tasks = updatedTasks;
-        } else {
-
-            const sourceColumnIndex = updatedColumns.findIndex(col => col.status === source.droppableId);
-            const destinationColumnIndex = updatedColumns.findIndex(col => col.status === destination.droppableId);
-            const [movedTask] = updatedColumns[sourceColumnIndex].tasks.splice(source.index, 1);
-            updatedColumns[destinationColumnIndex].tasks.splice(destination.index, 0, movedTask);
-        }
-
-        setColumns(updatedColumns);
-        localStorage.setItem('columnPositions', JSON.stringify(updatedColumns));
-    };
+    }, [repoUrl]);
 
     return (
         <Container>
@@ -201,7 +171,7 @@ function App() {
                         repoUrl={repoUrl}
                         loading={loading}
                         handleRepoUrlChange={handleRepoUrlChange}
-                        handleLoadIssues={handleLoadColumns}
+                        handleLoadIssues={() => handleLoadColumns(repoUrl)}
                     />
                 </Col>
                 <Col>
@@ -214,24 +184,25 @@ function App() {
                 <Col>
                     <TaskColumns
                         columns={columns}
-                        handlePointChange={handlePointChange}
+                        handleAddTask={handleAddTask}
                         handleDragEnd={handleDragEnd}
+                        onPointChange={handlePointChange}
                     />
                 </Col>
             </Row>
             <Row>
                 <Col>
-                    <Button onClick={handleShowModal}>Add Task</Button>
+                    <Button onClick={() => setShowModal(true)}>Add Task</Button>
                 </Col>
             </Row>
             <AddTaskModal
                 showModal={showModal}
-                handleCloseModal={handleCloseModal}
+                handleCloseModal={() => setShowModal(false)}
                 handleAddTask={handleAddTask}
             />
         </Container>
     );
-
 }
 
 export default App;
+
