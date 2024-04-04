@@ -1,22 +1,37 @@
-import { useState, useEffect } from 'react';
-import Card from './components/Card/Card';
-import { Container, Row, Col, Modal, Button } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Button, } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { statuses, getTasks, updateTasks } from './utils/data-tasks.ts';
 import Column from "./interfaces/Columns.ts";
-import AddTaskForm from "./components/AddTaskForm/AddTaskForm.tsx";
 import { v4 as uuidv4 } from 'uuid';
-import Task from "./interfaces/Task.ts";
 import {Priority} from "./interfaces/Priority.ts";
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import AddTaskModal from "./components/AddTaskModal/AddTaskModal.tsx";
+import InputForm from "./components/InputForm/Inputform.tsx";
+import TaskColumns from "./components/TaskColumns/TaskColumns.tsx";
+import OwnerLinks from "./components/OwnerLinks/OwnerLinks.tsx";
 
 function App() {
     const [columns, setColumns] = useState<Column[]>([]);
     const [showModal, setShowModal] = useState(false);
-    const [tasks, setTasks] = useState<Task[]>([]);
+    const [repoUrl, setRepoUrl] = useState('');
+    const [loading, setLoading] = useState(false);
+    const owner = repoUrl.split('/')[3];
+
+    const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setRepoUrl(e.target.value);
+    };
+
     useEffect(() => {
+        const storedColumns = localStorage.getItem('columnPositions');
+        if (storedColumns) {
+            setColumns(JSON.parse(storedColumns));
+        }
+    }, []);
+
+    useEffect(() => {
+        const updatedTasks = getTasks();
         const initialColumns = statuses.map((status) => {
-            const tasksInColumn = tasks.filter((task) => task.status === status);
+            const tasksInColumn = updatedTasks.filter((task) => task.status === status);
             const totalPoints = tasksInColumn.reduce((acc, task) => acc + task.points, 0);
             return {
                 status,
@@ -28,19 +43,38 @@ function App() {
     }, []);
 
     useEffect(() => {
-        const updatedTasks = getTasks();
-        setTasks(updatedTasks);
-        const initialColumns = statuses.map((status) => {
-            const tasksInColumn = updatedTasks.filter((task) => task.status === status);
-            const totalPoints = tasksInColumn.reduce((acc, task) => acc + task.points, 0);
-            return {
-                status,
-                tasks: tasksInColumn,
-                totalPoints,
-            };
-        });
-        setColumns(initialColumns);
-    }, [tasks]);
+        const storedColumns = JSON.stringify(columns);
+        localStorage.setItem('columnPositions', storedColumns);
+    }, [columns]);
+
+    const handleLoadIssues = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('http://localhost:3001/api/issues');
+            const data = await response.json();
+            const tasks = data.map((issue: any) => ({
+                id: uuidv4(),
+                title: issue.title,
+                points: 1,
+                priority: 'Low',
+                status: 'ToDo',
+            }));
+            updateTasks(tasks);
+            const initialColumns = statuses.map((status) => {
+                const tasksInColumn = tasks.filter((task: { status: string; }) => task.status === status);
+                const totalPoints = tasksInColumn.reduce((acc: any, task: { points: any; }) => acc + task.points, 0);
+                return {
+                    status,
+                    tasks: tasksInColumn,
+                    totalPoints,
+                };
+            });
+            setColumns(initialColumns);
+        } catch (error) {
+            console.error('Failed to load issues:', error);
+        }
+        setLoading(false);
+    };
 
     const handlePointChange = (taskId: string | number, newPoints: number) => {
         setColumns(prevColumns => {
@@ -125,57 +159,38 @@ function App() {
                     return col;
                 });
                 setColumns(updatedColumns);
+                localStorage.setItem('columnPositions', JSON.stringify(columns));
             }
         }
     };
 
-
-
     return (
         <Container>
             <Row>
-                <DragDropContext onDragEnd={handleDragEnd}>
-                    {columns.map((column) => (
-                        <Col key={column.status}>
-                            <h2>{column.status} tasks</h2>
-                            <Droppable droppableId={column.status}>
-                                {(provided) => (
-                                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                                        {column.tasks.map((task, index) => (
-                                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                                                {(provided) => (
-                                                    <div
-                                                        ref={provided.innerRef}
-                                                        {...provided.draggableProps}
-                                                        {...provided.dragHandleProps}
-                                                    >
-                                                        <Card
-                                                            id={task.id}
-                                                            title={task.title}
-                                                            points={task.points}
-                                                            priority={task.priority}
-                                                            onPointChange={handlePointChange}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </Draggable>
-                                        ))}
-                                        {provided.placeholder}
-                                    </div>
-                                )}
-                            </Droppable>
-                        </Col>
-                    ))}
-                </DragDropContext>
+                <InputForm
+                    repoUrl={repoUrl}
+                    loading={loading}
+                    handleRepoUrlChange={handleRepoUrlChange}
+                    handleLoadIssues={handleLoadIssues}
+                />
             </Row>
-            <Modal show={showModal} onHide={handleCloseModal}>
-                <Modal.Header closeButton>
-                    <Modal.Title>Add New Task</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <AddTaskForm onSubmit={handleAddTask} />
-                </Modal.Body>
-            </Modal>
+            <Row>
+                <Col>
+                    <OwnerLinks owner={owner} repoUrl={repoUrl} />
+                </Col>
+            </Row>
+            <Row>
+                <TaskColumns
+                    columns={columns}
+                    handlePointChange={handlePointChange}
+                    handleDragEnd={handleDragEnd}
+                />
+            </Row>
+            <AddTaskModal
+                showModal={showModal}
+                handleCloseModal={handleCloseModal}
+                handleAddTask={handleAddTask}
+            />
             <Button onClick={handleShowModal}>Add Task</Button>
         </Container>
     );
