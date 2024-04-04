@@ -15,7 +15,7 @@ import {DropResult} from "react-beautiful-dnd";
 function App() {
     const [columns, setColumns] = useState<Column[]>([]);
     const [showModal, setShowModal] = useState(false);
-    const [repoUrl, setRepoUrl] = useState('');
+    const [repoUrl, setRepoUrl] = useState<string>(localStorage.getItem('lastRepoUrl') || '');
     const [loading, setLoading] = useState(false);
     const owner = repoUrl.split('/')[0];
     const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,10 @@ function App() {
         }
 
         setColumns(updatedColumns);
+
+        updateTasksForRepo(updatedColumns.flatMap(column => column.tasks), repoUrl);
     };
+
 
 
     const handlePointChange = (taskId: string | number, newPoints: number) => {
@@ -68,16 +71,15 @@ function App() {
     };
 
     const updateTasksForRepo = (tasks: any[], repoUrl: string) => {
-        const repoTasksKey = `${repoUrl}_tasks`;
-        localStorage.setItem(repoTasksKey, JSON.stringify(tasks));
+        if (!repoUrl) return;
+        const sanitizedRepoUrl = repoUrl.replace(/\//g, '_');
+
+        const repoTasksKey = `${sanitizedRepoUrl}_tasks`;
+        const allTasks = JSON.parse(localStorage.getItem('allTasks') || '{}');
+        allTasks[repoTasksKey] = tasks;
+        localStorage.setItem('allTasks', JSON.stringify(allTasks));
     };
 
-    const getTasksForRepo = (repoUrl: string) => {
-        if (!repoUrl) return [];
-        const repoTasksKey = `${repoUrl}_tasks`;
-        const tasksJson = localStorage.getItem(repoTasksKey);
-        return tasksJson ? JSON.parse(tasksJson) : [];
-    };
 
     const handleLoadColumns = async (url: string) => {
         if (!url) {
@@ -114,7 +116,9 @@ function App() {
         }
 
         setLoading(false);
+        localStorage.setItem('lastRepoUrl', url);
     };
+
 
     const handleAddTask = (newTask: { title: string; points: number; priority: Priority; status: string; }) => {
         if (!repoUrl) {
@@ -124,9 +128,13 @@ function App() {
 
         const taskWithId = {
             ...newTask,
-            id: uuidv4()
+            id: uuidv4(),
+            repoUrl: repoUrl
         };
-        const updatedTasks = [...getTasksForRepo(repoUrl), taskWithId];
+
+        const currentTasks = getTasksForRepo(repoUrl);
+        const updatedTasks = [...currentTasks, taskWithId];
+
         updateTasksForRepo(updatedTasks, repoUrl);
         const updatedColumns = statuses.map((status) => {
             const tasksInColumn = updatedTasks.filter((task) => task.status === status);
@@ -137,31 +145,57 @@ function App() {
                 totalPoints,
             };
         });
+
         setColumns(updatedColumns);
         setShowModal(false);
     };
 
+    const getTasksForRepo = (repoUrl: string) => {
+        if (!repoUrl) return [];
+        const allTasks = JSON.parse(localStorage.getItem('allTasks') || '{}');
+        const repoTasksKey = `${repoUrl}_tasks`;
+        const repoTasks = allTasks[repoTasksKey] || [];
+        return repoTasks.filter((task: { repoUrl: string }) => task.repoUrl === repoUrl);
+    };
+
+
     const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setRepoUrl(e.target.value);
-        if (!e.target.value) {
+        const newRepoUrl = e.target.value;
+        setRepoUrl(newRepoUrl);
+
+        const previousRepoUrl = localStorage.getItem('lastRepoUrl');
+        if (previousRepoUrl && previousRepoUrl !== newRepoUrl) {
             setColumns([]);
-            // Clear tasks from localStorage when input is cleared
-            localStorage.removeItem(`${repoUrl}_tasks`);
+            if (newRepoUrl) {
+                handleLoadColumns(newRepoUrl);
+                localStorage.setItem('lastRepoUrl', newRepoUrl);
+            } else {
+                setColumns([]);
+                localStorage.removeItem('lastRepoUrl');
+            }
         }
     };
 
+
     useEffect(() => {
         const lastRepoUrl = localStorage.getItem('lastRepoUrl');
-        if (lastRepoUrl) {
+        if (lastRepoUrl && lastRepoUrl !== repoUrl) {
+            setColumns([]);
             handleLoadColumns(lastRepoUrl);
         }
-    }, []);
+    }, [repoUrl]);
 
     useEffect(() => {
         if (repoUrl) {
             localStorage.setItem('lastRepoUrl', repoUrl);
         }
     }, [repoUrl]);
+
+    useEffect(() => {
+        updateTasksForRepo(columns.flatMap(column => column.tasks), repoUrl);
+    }, [columns, repoUrl]);
+
+
 
     return (
         <Container>
