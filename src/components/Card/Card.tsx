@@ -1,12 +1,9 @@
-
 import CardProps from '../../interfaces/Card';
 import { Card as BootstrapCard } from 'react-bootstrap';
 import './Card.css';
-
-
 const Card = ({ title, id, points, priority, onPointChange }: CardProps) => {
     const minPoints = 0;
-    const maxPoints = 10; // Maximum allowed points
+    const maxPoints = 10;
 
     const handleIncrement = () => {
         if (points < maxPoints) {

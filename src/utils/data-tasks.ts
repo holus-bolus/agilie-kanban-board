@@ -1,11 +1,12 @@
 import Status from "../interfaces/Status.ts";
-import { Priority } from "../interfaces/Priority.ts";
+import {Priority} from "../interfaces/Priority.ts";
 import Task from "../interfaces/Task.ts";
+
 
 export const statuses: Status[] = ['Todo', 'In progress', 'Done'];
 export const priorities: Priority[] = ['Low', 'Medium', 'High'];
 
-export const tasks: Array<Task> = [
+let tasks: Task[] = [
     {
         title: 'First task',
         id: '1',
@@ -35,3 +36,13 @@ export const tasks: Array<Task> = [
         status: statuses[2],
     },
 ];
+
+export default tasks;
+
+export function updateTasks(newTask: Task) {
+    tasks.push(newTask);
+}
+
+export function getTasks() {
+    return tasks;
+}
