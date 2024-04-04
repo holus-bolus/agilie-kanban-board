@@ -1,3 +1,3 @@
-type Status = 'todo'|'in-progress'|'done'
+type Status = 'Todo'|'In progress'|'Done'
 
 export default Status

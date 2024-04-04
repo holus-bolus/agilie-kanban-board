@@ -1,26 +1,37 @@
-import {Task} from "../interfaces/Task";
 import Status from "../interfaces/Status.ts";
+import { Priority } from "../interfaces/Priority.ts";
+import Task from "../interfaces/Task.ts";
 
-export const statuses: Status[] = ['todo', 'in-progress', 'done']
+export const statuses: Status[] = ['Todo', 'In progress', 'Done'];
+export const priorities: Priority[] = ['Low', 'Medium', 'High'];
 
 export const tasks: Array<Task> = [
     {
         title: 'First task',
         id: '1',
         points: 5,
-        status: 'todo'
+        priority: priorities[2],
+        status: statuses[0],
+    },
+    {
+        title: 'Fourth task',
+        id: '3',
+        points: 5,
+        priority: priorities[2],
+        status: statuses[0],
     },
     {
         title: 'Second task',
         id: '2',
         points: 8,
-        status: 'in-progress'
+        priority: priorities[1],
+        status: statuses[1],
     },
     {
         title: 'Third task',
         id: '3',
         points: 3,
-        status: 'done'
+        priority: priorities[0],
+        status: statuses[2],
     },
 ];
-

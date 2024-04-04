@@ -1,6 +1,12 @@
-export type Task = {
-    title: string,
-    id: string,
-    status: 'todo' | 'in-progress' | 'done',
-    points: number
+
+import { Priority } from './Priority';
+
+interface Task {
+    title: string;
+    id: string;
+    points: number;
+    priority: Priority;
+    status: string;
 }
+
+export default Task;
