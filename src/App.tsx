@@ -19,13 +19,17 @@ function App() {
     const [error, setError] = useState<string | null>(null);
 
     const updateTasksForRepo = (tasks: any[], repoUrl: string) => {
-        localStorage.setItem(repoUrl, JSON.stringify(tasks));
+        const repoTasksKey = `${repoUrl}_tasks`;
+        localStorage.setItem(repoTasksKey, JSON.stringify(tasks));
     };
 
     const getTasksForRepo = (repoUrl: string) => {
-        const tasksJson = localStorage.getItem(repoUrl);
+        const repoTasksKey = `${repoUrl}_tasks`;
+        const tasksJson = localStorage.getItem(repoTasksKey);
         return tasksJson ? JSON.parse(tasksJson) : [];
     };
+
+
 
 
     const handleLoadColumns = async () => {
@@ -62,11 +66,18 @@ function App() {
     };
 
 
+
     const handleAddTask = (newTask: { title: string; points: number; priority: Priority; status: string; }) => {
+        if (!repoUrl) {
+            setError('Repository URL is empty');
+            return;
+        }
+
         const taskWithId = {
             ...newTask,
             id: uuidv4()
         };
+        const repoTasksKey = `${repoUrl}_tasks`;
         const updatedTasks = [...getTasksForRepo(repoUrl), taskWithId];
         updateTasksForRepo(updatedTasks, repoUrl);
         const updatedColumns = statuses.map((status) => {
@@ -80,7 +91,10 @@ function App() {
         });
         setColumns(updatedColumns);
         setShowModal(false);
+
+        localStorage.setItem(repoTasksKey, JSON.stringify(updatedTasks));
     };
+
     const handleRepoUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setRepoUrl(e.target.value);
         setColumns([]);
@@ -156,45 +170,25 @@ function App() {
     const handleDragEnd = (result: any) => {
         if (!result.destination) return;
         const {source, destination} = result;
+        const updatedColumns = [...columns];
+
         if (source.droppableId === destination.droppableId) {
 
-            const column = columns.find(col => col.status === source.droppableId);
-            if (column) {
-                const updatedTasks = Array.from(column.tasks);
-                const [removed] = updatedTasks.splice(source.index, 1);
-                updatedTasks.splice(destination.index, 0, removed);
-                const updatedColumns = columns.map(col => {
-                    if (col.status === source.droppableId) {
-                        return {...col, tasks: updatedTasks};
-                    }
-                    return col;
-                });
-                setColumns(updatedColumns);
-            }
+            const sourceColumnIndex = updatedColumns.findIndex(col => col.status === source.droppableId);
+            const updatedTasks = Array.from(updatedColumns[sourceColumnIndex].tasks);
+            const [removed] = updatedTasks.splice(source.index, 1);
+            updatedTasks.splice(destination.index, 0, removed);
+            updatedColumns[sourceColumnIndex].tasks = updatedTasks;
         } else {
 
-            const sourceColumn = columns.find(col => col.status === source.droppableId);
-            const destinationColumn = columns.find(col => col.status === destination.droppableId);
-            if (sourceColumn && destinationColumn) {
-                const sourceTasks = Array.from(sourceColumn.tasks);
-                const destinationTasks = Array.from(destinationColumn.tasks);
-                const [movedTask] = sourceTasks.splice(source.index, 1);
-                destinationTasks.splice(destination.index, 0, movedTask);
-                const updatedSourceColumn = {...sourceColumn, tasks: sourceTasks};
-                const updatedDestinationColumn = {...destinationColumn, tasks: destinationTasks};
-                const updatedColumns = columns.map(col => {
-                    if (col.status === source.droppableId) {
-                        return updatedSourceColumn;
-                    }
-                    if (col.status === destination.droppableId) {
-                        return updatedDestinationColumn;
-                    }
-                    return col;
-                });
-                setColumns(updatedColumns);
-                localStorage.setItem('columnPositions', JSON.stringify(columns));
-            }
+            const sourceColumnIndex = updatedColumns.findIndex(col => col.status === source.droppableId);
+            const destinationColumnIndex = updatedColumns.findIndex(col => col.status === destination.droppableId);
+            const [movedTask] = updatedColumns[sourceColumnIndex].tasks.splice(source.index, 1);
+            updatedColumns[destinationColumnIndex].tasks.splice(destination.index, 0, movedTask);
         }
+
+        setColumns(updatedColumns);
+        localStorage.setItem('columnPositions', JSON.stringify(updatedColumns));
     };
 
     return (
