@@ -1,6 +1,7 @@
 import CardProps from '../../interfaces/Card';
-import { Card as BootstrapCard } from 'react-bootstrap';
+import { Card as BootstrapCard, Button } from 'react-bootstrap';
 import './Card.css';
+
 const Card = ({ title, id, points, priority, onPointChange }: CardProps) => {
     const minPoints = 0;
     const maxPoints = 10;
@@ -19,12 +20,14 @@ const Card = ({ title, id, points, priority, onPointChange }: CardProps) => {
 
     return (
         <BootstrapCard className="my-3 p-3 card-hover">
-            <div>{title}</div>
-            <div>Priority: {priority}</div>
-            <div>{id}</div>
-            <div>{points}</div>
-            <button onClick={handleIncrement}>+</button>
-            <button onClick={handleDecrement}>-</button>
+            <div className="card-title">{title}</div>
+            <div className="card-info">Priority: {priority}</div>
+            <div className="card-info">ID: {id}</div>
+            <div className="card-info">Points: {points}</div>
+            <div className="button-container">
+                <Button variant="primary" size="sm" onClick={handleIncrement}>+</Button>
+                <Button variant="primary" size="sm" onClick={handleDecrement}>-</Button>
+            </div>
         </BootstrapCard>
     );
 };

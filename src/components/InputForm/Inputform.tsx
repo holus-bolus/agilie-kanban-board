@@ -13,7 +13,7 @@ const InputForm: React.FC<InputFormProps> = ({ repoUrl, loading, handleRepoUrlCh
     return (
         <Form.Group as={Col} controlId="repoUrl">
             <Form.Label>Repository URL:</Form.Label>
-            <Form.Control type="text" value={repoUrl} onChange={handleRepoUrlChange} />
+            <Form.Control type="text" value={repoUrl} onChange={handleRepoUrlChange} placeholder={'Enter the data in format owner/repo'} />
             <Button onClick={handleLoadIssues} disabled={loading}>
                 {loading ? 'Loading...' : 'Load'}
             </Button>
